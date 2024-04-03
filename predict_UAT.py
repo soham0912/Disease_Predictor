@@ -12,9 +12,12 @@ from flask_cors import CORS
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import GradientBoostingClassifier
+from catboost import CatBoostClassifier
 import warnings
 import time
+from joblib import Parallel, delayed
 
 
 app = Flask(__name__)
@@ -52,28 +55,13 @@ def pred_disease():
 
     warnings.filterwarnings("ignore", message="X does not have valid feature names")
 
+
+
+
     # Symptoms List
-    symp_list = ['back_pain', 'constipation', 'abdominal_pain', 'diarrhoea', 'mild_fever', 'yellow_urine',
-          'yellowing_of_eyes', 'acute_liver_failure', 'fluid_overload', 'swelling_of_stomach',
-          'swelled_lymph_nodes', 'malaise', 'blurred_and_distorted_vision', 'phlegm', 'throat_irritation',
-          'redness_of_eyes', 'sinus_pressure', 'runny_nose', 'congestion', 'chest_pain', 'weakness_in_limbs',
-          'fast_heart_rate', 'pain_during_bowel_movements', 'pain_in_anal_region', 'bloody_stool',
-          'irritation_in_anus', 'neck_pain', 'dizziness', 'cramps', 'bruising', 'obesity', 'swollen_legs',
-          'swollen_blood_vessels', 'puffy_face_and_eyes', 'enlarged_thyroid', 'brittle_nails',
-          'swollen_extremeties', 'excessive_hunger', 'extra_marital_contacts', 'drying_and_tingling_lips',
-          'slurred_speech', 'knee_pain', 'hip_joint_pain', 'muscle_weakness', 'stiff_neck', 'swelling_joints',
-          'movement_stiffness', 'spinning_movements', 'loss_of_balance', 'unsteadiness',
-          'weakness_of_one_body_side', 'loss_of_smell', 'bladder_discomfort', 'foul_smell_of urine',
-          'continuous_feel_of_urine', 'passage_of_gases', 'internal_itching', 'toxic_look_(typhos)',
-          'depression', 'irritability', 'muscle_pain', 'altered_sensorium', 'red_spots_over_body', 'belly_pain',
-          'abnormal_menstruation', 'dischromic _patches', 'watering_from_eyes', 'increased_appetite', 'polyuria',
-          'family_history', 'mucoid_sputum',
-          'rusty_sputum', 'lack_of_concentration', 'visual_disturbances', 'receiving_blood_transfusion',
-          'receiving_unsterile_injections', 'coma', 'stomach_bleeding', 'distention_of_abdomen',
-          'history_of_alcohol_consumption', 'fluid_overload', 'blood_in_sputum', 'prominent_veins_on_calf',
-          'palpitations', 'painful_walking', 'pus_filled_pimples', 'blackheads', 'scurring', 'skin_peeling',
-          'silver_like_dusting', 'small_dents_in_nails', 'inflammatory_nails', 'blister', 'red_sore_around_nose',
-          'yellow_crust_ooze']
+    symp_list = pd.read_csv("Final_Dataset.csv", nrows=0).columns.tolist()
+    symp_list.pop()
+    print(symp_list)
 
     # Diseases List
     disease_list = ['Fungal Infection', 'Allergy', 'GERD', 'Chronic Cholestasis', 'Drug Reaction',
@@ -86,14 +74,16 @@ def pred_disease():
                'Arthritis', 'Vertigo', 'Acne', 'Urinary Tract Infection', 'Psoriasis',
                'Impetigo']
 
-    l2 = []
-    for x in range(0, len(symp_list)):
-        l2.append(0)
+    # l2 = []
+    # for x in range(0, len(symp_list)):
+    #     l2.append(0)
+
+
 
 # ------------------------------------------------ TRAINING DATA -------------------------------------------------------
 
     # Reading and preprocessing the training dataset csv file
-    df = pd.read_csv("Training.csv")
+    df = pd.read_csv("Final_Dataset.csv")
     # pd.set_option('future.no_silent_downcasting', True)
     # df.replace(
     #     {'prognosis': {'Fungal Infection': 0, 'Allergy': 1, 'GERD': 2, 'Chronic Cholestasis': 3, 'Drug Reaction': 4,
@@ -117,47 +107,64 @@ def pred_disease():
 
     y = np.ravel(y)
 
+    print(X)
+    print(y)
+
+    # Split the dataset into training and testing sets (80% train, 20% test)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
 # ------------------------------------------------ TESTING DATA -------------------------------------------------------
 
-    # Reading and preprocessing the testing dataset csv file
-    df2 = pd.read_csv("Testing.csv")
-    # pd.set_option('future.no_silent_downcasting', True)
-    # df2.replace(
-    #     {'prognosis': {'Fungal Infection': 0, 'Allergy': 1, 'GERD': 2, 'Chronic Cholestasis': 3, 'Drug Reaction': 4,
-    #            'Peptic Ulcer Disease': 5, 'AIDS': 6, 'Diabetes': 7, 'Gastroenteritis': 8, 'Bronchial Asthma': 9, 'Hypertension': 10,
-    #            'Migraine': 11, 'Cervical Spondylosis': 12,
-    #            'Paralysis (brain hemorrhage)': 13, 'Jaundice': 14, 'Malaria': 15, 'Chickenpox': 16, 'Dengue': 17, 'Typhoid': 18, 'Hepatitis A': 19,
-    #            'Hepatitis B': 20, 'Hepatitis C': 21, 'Hepatitis D': 22, 'Hepatitis E': 23, 'Alcoholic Hepatitis': 24, 'Tuberculosis': 25,
-    #            'Common Cold': 26, 'Pneumonia': 27, 'Dimorphic Hemmorhoids (piles)': 28,
-    #            'Heart Attack': 29, 'Varicose Veins': 30, 'Hypothyroidism': 31, 'Hyperthyroidism': 32, 'Hypoglycemia': 33, 'Osteoarthritis': 34,
-    #            'Arthritis': 35, 'Vertigo': 36, 'Acne': 37, 'Urinary Tract Infection': 38, 'Psoriasis': 39,
-    #            'Impetigo': 40}},
-    #     inplace=True
-    # )
-
-    X_test = df2[symp_list]
-    y_test = df2[["prognosis"]]
-    le = LabelEncoder()
-    y_test = le.fit_transform(y_test)
-    y_test = np.ravel(y_test)
+    # # Reading and preprocessing the testing dataset csv file
+    # df2 = pd.read_csv("Testing.csv")
+    # # pd.set_option('future.no_silent_downcasting', True)
+    # # df2.replace(
+    # #     {'prognosis': {'Fungal Infection': 0, 'Allergy': 1, 'GERD': 2, 'Chronic Cholestasis': 3, 'Drug Reaction': 4,
+    # #            'Peptic Ulcer Disease': 5, 'AIDS': 6, 'Diabetes': 7, 'Gastroenteritis': 8, 'Bronchial Asthma': 9, 'Hypertension': 10,
+    # #            'Migraine': 11, 'Cervical Spondylosis': 12,
+    # #            'Paralysis (brain hemorrhage)': 13, 'Jaundice': 14, 'Malaria': 15, 'Chickenpox': 16, 'Dengue': 17, 'Typhoid': 18, 'Hepatitis A': 19,
+    # #            'Hepatitis B': 20, 'Hepatitis C': 21, 'Hepatitis D': 22, 'Hepatitis E': 23, 'Alcoholic Hepatitis': 24, 'Tuberculosis': 25,
+    # #            'Common Cold': 26, 'Pneumonia': 27, 'Dimorphic Hemmorhoids (piles)': 28,
+    # #            'Heart Attack': 29, 'Varicose Veins': 30, 'Hypothyroidism': 31, 'Hyperthyroidism': 32, 'Hypoglycemia': 33, 'Osteoarthritis': 34,
+    # #            'Arthritis': 35, 'Vertigo': 36, 'Acne': 37, 'Urinary Tract Infection': 38, 'Psoriasis': 39,
+    # #            'Impetigo': 40}},
+    # #     inplace=True
+    # # )
+    #
+    # X_test = df2[symp_list]
+    # y_test = df2[["prognosis"]]
+    # le = LabelEncoder()
+    # y_test = le.fit_transform(y_test)
+    # y_test = np.ravel(y_test)
 
 # ------------------------------------------------ DECISION TREE ------------------------------------------------------
 
     def DecisionTree():
 
         clf3 = tree.DecisionTreeClassifier()
-        clf3 = clf3.fit(X, y)
+        clf3 = clf3.fit(X_train, y_train)
 
         # Training dataset and calculating accuracy
         y_pred = clf3.predict(X_test)
         print(accuracy_score(y_test, y_pred))
-        print(accuracy_score(y_test, y_pred,normalize=False))
+        print(accuracy_score(y_test, y_pred, normalize=True))
 
         # Posting flags for the symptoms and storing them in a list
-        for k in range(0, len(symp_list)):
-            for z in nsymptoms:
-                if z == symp_list[k]:
-                    l2[k] = 1
+        # for k in range(0, len(symp_list)):
+        #     for z in nsymptoms:
+        #         if z == symp_list[k]:
+        #             l2[k] = 1
+
+        l2 = []
+
+        for i in range(0, len(symp_list)):
+            flag = "No"
+            for j in range(0, len(nsymptoms)):
+                if nsymptoms[j] == symp_list[i]:
+                    l2.append(1)
+                    flag = "Yes"
+            if flag == "No":
+                l2.append(0)
 
         # Predicting the disease
         inputtest = [l2]
@@ -183,18 +190,29 @@ def pred_disease():
     def RandomForest():
 
         clf4 = RandomForestClassifier()
-        clf4 = clf4.fit(X, np.ravel(y))
+        clf4 = clf4.fit(X_train, y_train)
 
         # Training dataset and calculating accuracy
         y_pred = clf4.predict(X_test)
         print(accuracy_score(y_test, y_pred))
-        print(accuracy_score(y_test, y_pred, normalize=False))
+        print(accuracy_score(y_test, y_pred, normalize=True))
 
         # Posting flags for the symptoms and storing them in a list
-        for k in range(0, len(symp_list)):
-            for z in nsymptoms:
-                if z == symp_list[k]:
-                    l2[k] = 1
+        # for k in range(0, len(symp_list)):
+        #     for z in nsymptoms:
+        #         if z == symp_list[k]:
+        #             l2[k] = 1
+
+        l2 = []
+
+        for i in range(0, len(symp_list)):
+            flag = "No"
+            for j in range(0, len(nsymptoms)):
+                if nsymptoms[j] == symp_list[i]:
+                    l2.append(1)
+                    flag = "Yes"
+            if flag == "No":
+                l2.append(0)
 
         # Predicting the disease
         inputtest = [l2]
@@ -220,18 +238,29 @@ def pred_disease():
     def NaiveBayes():
 
         clf5 = GaussianNB()
-        clf5 = clf5.fit(X, np.ravel(y))
+        clf5 = clf5.fit(X_train, y_train)
 
         # Training dataset and calculating accuracy
         y_pred = clf5.predict(X_test)
         print(accuracy_score(y_test, y_pred))
-        print(accuracy_score(y_test, y_pred, normalize=False))
+        print(accuracy_score(y_test, y_pred, normalize=True))
 
         # Posting flags for the symptoms and storing them in a list
-        for k in range(0, len(symp_list)):
-            for z in nsymptoms:
-                if z == symp_list[k]:
-                    l2[k] = 1
+        # for k in range(0, len(symp_list)):
+        #     for z in nsymptoms:
+        #         if z == symp_list[k]:
+        #             l2[k] = 1
+
+        l2 = []
+
+        for i in range(0, len(symp_list)):
+            flag = "No"
+            for j in range(0, len(nsymptoms)):
+                if nsymptoms[j] == symp_list[i]:
+                    l2.append(1)
+                    flag = "Yes"
+            if flag == "No":
+                l2.append(0)
 
         # Predicting the disease
         inputtest = [l2]
@@ -255,19 +284,30 @@ def pred_disease():
 # ------------------------------------------------ SUPPORT VECTOR MACHINES (SVM) ---------------------------------------
     def SVM():
 
-        clf6 = SVC(kernel='linear')
-        clf6.fit(X, y)
+        clf6 = SVC(kernel='rbf', gamma='auto')
+        clf6.fit(X_train, y_train)
 
         # Training dataset and calculating accuracy
         y_pred = clf6.predict(X_test)
         print(accuracy_score(y_test, y_pred))
-        print(accuracy_score(y_test, y_pred, normalize=False))
+        print(accuracy_score(y_test, y_pred, normalize=True))
 
         # Posting flags for the symptoms and storing them in a list
-        for k in range(0, len(symp_list)):
-            for z in nsymptoms:
-                if z == symp_list[k]:
-                    l2[k] = 1
+        # for k in range(0, len(symp_list)):
+        #     for z in nsymptoms:
+        #         if z == symp_list[k]:
+        #             l2[k] = 1
+
+        l2 = []
+
+        for i in range(0, len(symp_list)):
+            flag = "No"
+            for j in range(0, len(nsymptoms)):
+                if nsymptoms[j] == symp_list[i]:
+                    l2.append(1)
+                    flag = "Yes"
+            if flag == "No":
+                l2.append(0)
 
                 # Predicting the disease
                 inputtest = [l2]
@@ -290,23 +330,48 @@ def pred_disease():
 
 # ------------------------------------------------ K-NEAREST NEIGHBORS (KNN) ------------------------------------------------------
     def KNN():
-        clf7 = KNeighborsClassifier(n_neighbors=5)  # Specify the KNN classifier, you can change the number of neighbors as needed
-        clf7.fit(X, y)
+        clf7 = KNeighborsClassifier()  # Specify the KNN classifier, you can change the number of neighbors as needed
+        param_grid = {
+            'n_neighbors': [3, 5, 7],  # Number of neighbors
+            'weights': ['uniform', 'distance'],  # Weight function used in prediction
+            'metric': ['euclidean', 'manhattan']  # Distance metric
+        }
+        # Perform grid search
+        grid_search = GridSearchCV(estimator=clf7, param_grid=param_grid, cv=3, n_jobs=-1)
+        grid_search.fit(X_train, y_train)
+
+        # Get the best parameters from grid search
+        best_params = grid_search.best_params_
+
+        # Train KNN with the best parameters
+        best_knn = KNeighborsClassifier(**best_params)
+        best_knn.fit(X, y)
 
         # Training dataset and calculating accuracy
-        y_pred = clf7.predict(X_test)
+        y_pred = best_knn.predict(X_test)
         print(accuracy_score(y_test, y_pred))
-        print(accuracy_score(y_test, y_pred, normalize=False))
+        print(accuracy_score(y_test, y_pred, normalize=True))
 
-        # Posting flags for the symptoms and storing them in a list
-        for k in range(0, len(symp_list)):
-            for z in nsymptoms:
-                if z == symp_list[k]:
-                    l2[k] = 1
+        # # Posting flags for the symptoms and storing them in a list
+        # for k in range(0, len(symp_list)):
+        #     for z in nsymptoms:
+        #         if z == symp_list[k]:
+        #             l2[k] = 1
+
+        l2 = []
+
+        for i in range(0, len(symp_list)):
+            flag = "No"
+            for j in range(0, len(nsymptoms)):
+                if nsymptoms[j] == symp_list[i]:
+                    l2.append(1)
+                    flag = "Yes"
+            if flag == "No":
+                l2.append(0)
 
                 # Predicting the disease
                 inputtest = [l2]
-                predict = clf7.predict(inputtest)
+                predict = best_knn.predict(inputtest)
                 predicted = predict[0]
 
                 nf = "Not Found"
@@ -326,23 +391,52 @@ def pred_disease():
 
 # ------------------------------------------------ GRADIENT BOOSTING MACHINES (GBM) ------------------------------------------------------
     def GBM():
-        clf8 = GradientBoostingClassifier()  # Specify the GBM classifier, you can tune hyperparameters as needed
-        clf8.fit(X, y)
+
+        clf8 = GradientBoostingClassifier()  
+
+        # Define hyperparameters grid for grid search
+        param_grid = {
+            'n_estimators': [50, 100, 150],  # Number of boosting stages
+            'learning_rate': [0.05, 0.1, 0.2],  # Learning rate
+            'max_depth': [3, 4, 5]  # Maximum depth of individual trees
+        }
+
+        # Perform grid search
+        grid_search = GridSearchCV(estimator=clf8, param_grid=param_grid, cv=3, n_jobs=-1)
+        grid_search.fit(X, y)
+
+        # Get the best parameters from grid search
+        best_params = grid_search.best_params_
+
+        # Train KNN with the best parameters
+        best_gbm = GradientBoostingClassifier(**best_params)
+        best_gbm.fit(X_train, y_train)
 
         # Training dataset and calculating accuracy
-        y_pred = clf8.predict(X_test)
+        y_pred = best_gbm.predict(X_test)
         print(accuracy_score(y_test, y_pred))
-        print(accuracy_score(y_test, y_pred, normalize=False))
+        print(accuracy_score(y_test, y_pred, normalize=True))
 
         # Posting flags for the symptoms and storing them in a list
-        for k in range(0, len(symp_list)):
-            for z in nsymptoms:
-                if z == symp_list[k]:
-                    l2[k] = 1
+        # for k in range(0, len(symp_list)):
+        #     for z in nsymptoms:
+        #         if z == symp_list[k]:
+        #             l2[k] = 1
+
+        l2 = []
+
+        for i in range(0, len(symp_list)):
+            flag = "No"
+            for j in range(0, len(nsymptoms)):
+                if nsymptoms[j] == symp_list[i]:
+                    l2.append(1)
+                    flag = "Yes"
+            if flag == "No":
+                l2.append(0)
 
                 # Predicting the disease
                 inputtest = [l2]
-                predict = clf8.predict(inputtest)
+                predict = best_gbm.predict(inputtest)
                 predicted = predict[0]
 
                 nf = "Not Found"
@@ -358,6 +452,55 @@ def pred_disease():
                     return disease_list[b]
                 else:
                     return nf
+                
+# ------------------------------------------------ Cat Boost Classifier ------------------------------------------------------
+
+    def CBC():
+
+        # Define CatBoost classifier
+        loaded_model = CatBoostClassifier()
+        loaded_model.load_model('catboost_model.bin')
+
+
+
+        # Posting flags for the symptoms and storing them in a list
+        # for k in range(0, len(symp_list)):
+        #     for z in nsymptoms:
+        #         if z == symp_list[k]:
+        #             l2[k] = 1
+
+        l2 = []
+
+        for i in range(0, len(symp_list)):
+            flag = "No"
+            for j in range(0, len(nsymptoms)):
+                if nsymptoms[j] == symp_list[i]:
+                    l2.append(1)
+                    flag = "Yes"
+            if flag == "No":
+                l2.append(0)
+
+
+        # Predicting the disease
+        inputtest = [l2]
+        predict = loaded_model.predict(inputtest)
+        predicted = predict[0]
+
+        nf = "Not Found"
+        h = "no"
+        b = 0
+        for a in range(0, len(disease_list)):
+            if predicted == a:
+                b = a
+                h = "yes"
+                break
+
+        if h == "yes":
+            return disease_list[b]
+        else:
+            return nf
+
+
 
 # ------------------------------------------------ RESULT OUTPUT ------------------------------------------------------
 
@@ -370,12 +513,13 @@ def pred_disease():
     nb_pred1 = NaiveBayes()
     nb_pred2 = NaiveBayes()
     nb_pred3 = NaiveBayes()
-    sv_pred = SVM()
-    gb_pred = GBM()
-    kn_pred = KNN()
+    # sv_pred = SVM()
+    # gb_pred = GBM()
+    # kn_pred = KNN()
+    cb_pred = CBC()
 
 
-    predictions = [dt_pred1, dt_pred2, dt_pred3, rf_pred1, rf_pred2, rf_pred3, nb_pred1, nb_pred2, nb_pred3, sv_pred, gb_pred, kn_pred]
+    predictions = [dt_pred1, dt_pred2, dt_pred3, rf_pred1, rf_pred2, rf_pred3, nb_pred1, nb_pred2, nb_pred3, cb_pred]
 
     # Count occurrences of each prediction
     prediction_counts = Counter(predictions)
